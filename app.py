@@ -177,6 +177,7 @@ def display_leads_table(leads: list):
             'Location': lead.person_location or 'Unknown',
             'Email': lead.email or 'N/A',
             'LinkedIn': lead.linkedin_url or 'N/A',
+            'Platform': lead.data_source or 'Unknown',
             'Publications': pub_count,
             'Category': get_score_category(lead.total_score),
             'ID': lead.id
@@ -190,7 +191,7 @@ def display_leads_table(leads: list):
         use_container_width=True,
         hide_index=True,
         column_config={
-            "LinkedIn": st.column_config.LinkColumn("LinkedIn", display_text="View Profile")
+            "LinkedIn": st.column_config.LinkColumn("LinkedIn")
         }
     )
     
