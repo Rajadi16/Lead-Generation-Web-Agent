@@ -341,10 +341,6 @@ def main():
     with st.sidebar:
         st.header("Controls")
         
-        # Scrape button
-        if st.button("🔍 Scrape", use_container_width=True):
-            scrape_pubmed_leads()
-        
         st.divider()
         
         # Filters
