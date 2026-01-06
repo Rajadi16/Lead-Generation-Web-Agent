@@ -1,0 +1,149 @@
+"""
+Email finder and generator for lead enrichment
+"""
+import re
+from typing import Optional, List
+
+
+class EmailFinder:
+    """Generate and validate email addresses"""
+    
+    def __init__(self):
+        self.common_patterns = [
+            "{first}.{last}@{domain}",
+            "{first}{last}@{domain}",
+            "{first_initial}{last}@{domain}",
+            "{first}_{last}@{domain}",
+        ]
+    
+    def generate_email(self, name: str, company: str, domain: Optional[str] = None) -> str:
+        """
+        Generate most likely email address based on name and company
+        """
+        if not name or not company:
+            return ""
+        
+        # Parse name
+        parts = self._parse_name(name)
+        if not parts:
+            return ""
+        
+        first = parts['first'].lower()
+        last = parts['last'].lower()
+        first_initial = first[0] if first else ""
+        
+        # Get or generate domain
+        if not domain:
+            domain = self._generate_domain(company)
+        
+        # Try most common pattern first
+        email = f"{first}.{last}@{domain}"
+        
+        return email
+    
+    def generate_all_patterns(self, name: str, company: str, domain: Optional[str] = None) -> List[str]:
+        """
+        Generate all common email patterns for a person
+        """
+        if not name or not company:
+            return []
+        
+        parts = self._parse_name(name)
+        if not parts:
+            return []
+        
+        first = parts['first'].lower()
+        last = parts['last'].lower()
+        first_initial = first[0] if first else ""
+        
+        if not domain:
+            domain = self._generate_domain(company)
+        
+        emails = []
+        for pattern in self.common_patterns:
+            email = pattern.format(
+                first=first,
+                last=last,
+                first_initial=first_initial,
+                domain=domain
+            )
+            emails.append(email)
+        
+        return emails
+    
+    def _parse_name(self, name: str) -> Optional[dict]:
+        """Parse full name into first and last name"""
+        # Remove titles
+        name = re.sub(r'\b(Dr|Prof|Mr|Ms|Mrs)\.?\s+', '', name, flags=re.IGNORECASE)
+        
+        parts = name.strip().split()
+        
+        if len(parts) < 2:
+            return None
+        
+        # Handle middle names/initials
+        if len(parts) == 2:
+            return {'first': parts[0], 'last': parts[1]}
+        else:
+            # Take first and last, ignore middle
+            return {'first': parts[0], 'last': parts[-1]}
+    
+    def _generate_domain(self, company: str) -> str:
+        """
+        Generate domain from company name
+        This is a simple heuristic - in production, use a company domain lookup service
+        """
+        # Clean company name
+        company = company.lower()
+        
+        # Remove common suffixes
+        company = re.sub(r'\s+(inc|corp|corporation|ltd|limited|llc|gmbh)\.?$', '', company, flags=re.IGNORECASE)
+        
+        # Remove special characters
+        company = re.sub(r'[^a-z0-9\s]', '', company)
+        
+        # Take first word or combine first two words
+        words = company.split()
+        if words:
+            if len(words) == 1:
+                domain = words[0]
+            else:
+                # For multi-word companies, try to create a reasonable domain
+                domain = words[0]
+        else:
+            domain = "example"
+        
+        return f"{domain}.com"
+    
+    def validate_email_format(self, email: str) -> bool:
+        """Validate email format"""
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(pattern, email))
+
+
+def main():
+    """Test email finder"""
+    finder = EmailFinder()
+    
+    test_cases = [
+        ("Dr. Jane Smith", "BioTech Innovations"),
+        ("John Doe", "Pharma Corp"),
+        ("Alice M. Johnson", "Liver Research Institute"),
+    ]
+    
+    print("=== Email Finder Test ===\n")
+    
+    for name, company in test_cases:
+        print(f"Name: {name}")
+        print(f"Company: {company}")
+        
+        primary_email = finder.generate_email(name, company)
+        print(f"Primary Email: {primary_email}")
+        
+        all_patterns = finder.generate_all_patterns(name, company)
+        print(f"All Patterns: {', '.join(all_patterns)}")
+        print()
+
+
+if __name__ == "__main__":
+    main()

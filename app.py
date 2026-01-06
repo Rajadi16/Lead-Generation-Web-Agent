@@ -1,0 +1,374 @@
+"""
+Lead Generation Web Agent - Main Streamlit Dashboard
+"""
+import streamlit as st
+import pandas as pd
+import json
+from datetime import datetime
+from database import init_db, SessionLocal, Lead, LeadRepository
+from scrapers.pubmed_scraper import PubMedScraper
+from scoring.propensity_scorer import PropensityScorer
+from enrichment.email_finder import EmailFinder
+from config import PUBMED_KEYWORDS
+
+# Page configuration
+st.set_page_config(
+    page_title="Lead Generation Dashboard",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .stApp {
+        max-width: 100%;
+    }
+    .lead-card {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 0.5rem 0;
+    }
+    .hot-lead {
+        background-color: #d4edda;
+        border-left: 4px solid #28a745;
+    }
+    .warm-lead {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+    .cold-lead {
+        background-color: #f8f9fa;
+        border-left: 4px solid #6c757d;
+    }
+    .metric-card {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        text-align: center;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+def init_session_state():
+    """Initialize session state variables"""
+    if 'db_initialized' not in st.session_state:
+        init_db()
+        st.session_state.db_initialized = True
+    
+    if 'leads_loaded' not in st.session_state:
+        st.session_state.leads_loaded = False
+
+
+def get_score_emoji(score: float) -> str:
+    """Get emoji for score"""
+    if score >= 80:
+        return "🟢"
+    elif score >= 50:
+        return "🟡"
+    else:
+        return "⚪"
+
+
+def get_score_category(score: float) -> str:
+    """Get category for score"""
+    if score >= 80:
+        return "Hot Lead"
+    elif score >= 50:
+        return "Warm Lead"
+    else:
+        return "Cold Lead"
+
+
+def get_score_class(score: float) -> str:
+    """Get CSS class for score"""
+    if score >= 80:
+        return "hot-lead"
+    elif score >= 50:
+        return "warm-lead"
+    else:
+        return "cold-lead"
+
+
+def scrape_pubmed_leads():
+    """Scrape leads from PubMed"""
+    with st.spinner("Searching PubMed for relevant papers..."):
+        scraper = PubMedScraper()
+        scorer = PropensityScorer()
+        email_finder = EmailFinder()
+        
+        # Search for papers
+        paper_ids = scraper.search_papers(PUBMED_KEYWORDS, months_back=24, max_results=100)
+        
+        if not paper_ids:
+            st.error("No papers found matching the criteria")
+            return
+        
+        st.info(f"Found {len(paper_ids)} papers")
+        
+        # Fetch paper details
+        papers = scraper.fetch_paper_details(paper_ids)
+        st.info(f"Fetched details for {len(papers)} papers")
+        
+        # Extract leads
+        leads = scraper.extract_leads_from_papers(papers)
+        st.info(f"Extracted {len(leads)} unique leads")
+        
+        # Enrich and score leads
+        db = SessionLocal()
+        repo = LeadRepository(db)
+        
+        added_count = 0
+        for lead_data in leads:
+            # Generate email
+            email = email_finder.generate_email(lead_data['name'], lead_data['company'])
+            lead_data['email'] = email
+            
+            # Convert publications to JSON string
+            if 'publications' in lead_data:
+                lead_data['publications'] = json.dumps(lead_data['publications'])
+            
+            # Calculate scores
+            scores = scorer.calculate_total_score(lead_data)
+            lead_data.update(scores)
+            
+            # Add to database
+            try:
+                repo.create_lead(lead_data)
+                added_count += 1
+            except Exception as e:
+                st.warning(f"Could not add lead {lead_data['name']}: {e}")
+        
+        db.close()
+        
+        st.success(f"Successfully added {added_count} leads to the database!")
+        st.session_state.leads_loaded = True
+
+
+def display_leads_table(leads: list):
+    """Display leads in a table format"""
+    if not leads:
+        st.info("No leads found. Try scraping PubMed or adjusting your filters.")
+        return
+    
+    # Convert to DataFrame
+    data = []
+    for lead in leads:
+        # Parse publications
+        pub_count = 0
+        if lead.publications:
+            try:
+                pubs = json.loads(lead.publications)
+                pub_count = len(pubs)
+            except:
+                pass
+        
+        data.append({
+            'Score': f"{get_score_emoji(lead.total_score)} {lead.total_score:.1f}",
+            'Name': lead.name,
+            'Title': lead.title,
+            'Company': lead.company,
+            'Location': lead.person_location or 'Unknown',
+            'Email': lead.email or 'N/A',
+            'Publications': pub_count,
+            'Category': get_score_category(lead.total_score),
+            'ID': lead.id
+        })
+    
+    df = pd.DataFrame(data)
+    
+    # Display table
+    st.dataframe(
+        df.drop('ID', axis=1),
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Export buttons
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        csv = df.to_csv(index=False)
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv,
+            file_name=f"leads_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv"
+        )
+    
+    with col2:
+        # For Excel export, we need to use a buffer
+        from io import BytesIO
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Leads')
+        
+        st.download_button(
+            label="📥 Download Excel",
+            data=buffer.getvalue(),
+            file_name=f"leads_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+
+def display_lead_details(lead: Lead):
+    """Display detailed view of a single lead"""
+    st.subheader(f"{lead.name}")
+    
+    # Score card
+    score_class = get_score_class(lead.total_score)
+    st.markdown(f"""
+    <div class="lead-card {score_class}">
+        <h3>{get_score_emoji(lead.total_score)} {lead.total_score:.1f}/100 - {get_score_category(lead.total_score)}</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Basic info
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Title:**", lead.title)
+        st.write("**Company:**", lead.company)
+        st.write("**Email:**", lead.email or "N/A")
+        st.write("**Location:**", lead.person_location or "Unknown")
+    
+    with col2:
+        st.write("**Funding Stage:**", lead.funding_stage or "Unknown")
+        st.write("**Company HQ:**", lead.company_hq or "Unknown")
+        st.write("**Data Source:**", lead.data_source)
+        st.write("**LinkedIn:**", lead.linkedin_url or "N/A")
+    
+    # Score breakdown
+    st.subheader("Score Breakdown")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.metric("Role Fit", f"{lead.role_fit_score:.1f}/30")
+    with col2:
+        st.metric("Company Intent", f"{lead.company_intent_score:.1f}/20")
+    with col3:
+        st.metric("Technographic", f"{lead.technographic_score:.1f}/25")
+    with col4:
+        st.metric("Location", f"{lead.location_score:.1f}/10")
+    with col5:
+        st.metric("Scientific Intent", f"{lead.scientific_intent_score:.1f}/40")
+    
+    # Publications
+    if lead.publications:
+        st.subheader("Publications")
+        try:
+            pubs = json.loads(lead.publications)
+            for pub in pubs:
+                st.write(f"- **{pub.get('title', 'N/A')}** ({pub.get('year', 'N/A')})")
+                if 'pubmed_id' in pub:
+                    st.write(f"  PubMed ID: {pub['pubmed_id']}")
+        except:
+            st.write(lead.publications)
+    
+    # Notes
+    if lead.notes:
+        st.subheader("Notes")
+        st.write(lead.notes)
+
+
+def main():
+    """Main application"""
+    init_session_state()
+    
+    # Header
+    st.title("🎯 Lead Generation Dashboard")
+    st.markdown("**Intelligent lead identification and ranking for 3D in-vitro models**")
+    
+    # Sidebar
+    with st.sidebar:
+        st.header("Controls")
+        
+        # Scrape button
+        if st.button("🔍 Scrape PubMed", use_container_width=True):
+            scrape_pubmed_leads()
+        
+        st.divider()
+        
+        # Filters
+        st.header("Filters")
+        
+        score_range = st.slider(
+            "Score Range",
+            min_value=0.0,
+            max_value=100.0,
+            value=(0.0, 100.0),
+            step=5.0
+        )
+        
+        search_name = st.text_input("Search Name")
+        search_company = st.text_input("Search Company")
+        search_location = st.text_input("Search Location")
+        
+        st.divider()
+        
+        # Stats
+        st.header("Statistics")
+        db = SessionLocal()
+        repo = LeadRepository(db)
+        all_leads = repo.get_all_leads()
+        
+        total_leads = len(all_leads)
+        hot_leads = len([l for l in all_leads if l.total_score >= 80])
+        warm_leads = len([l for l in all_leads if 50 <= l.total_score < 80])
+        cold_leads = len([l for l in all_leads if l.total_score < 50])
+        
+        st.metric("Total Leads", total_leads)
+        st.metric("🟢 Hot Leads", hot_leads)
+        st.metric("🟡 Warm Leads", warm_leads)
+        st.metric("⚪ Cold Leads", cold_leads)
+        
+        db.close()
+    
+    # Main content
+    tab1, tab2 = st.tabs(["📊 All Leads", "🔍 Lead Details"])
+    
+    with tab1:
+        # Get filtered leads
+        db = SessionLocal()
+        repo = LeadRepository(db)
+        
+        leads = repo.search_leads(
+            name=search_name if search_name else None,
+            company=search_company if search_company else None,
+            location=search_location if search_location else None,
+            min_score=score_range[0],
+            max_score=score_range[1]
+        )
+        
+        st.subheader(f"Leads ({len(leads)} found)")
+        display_leads_table(leads)
+        
+        db.close()
+    
+    with tab2:
+        # Lead selector
+        db = SessionLocal()
+        repo = LeadRepository(db)
+        all_leads = repo.get_all_leads()
+        
+        if all_leads:
+            lead_options = {f"{lead.name} - {lead.company}": lead.id for lead in all_leads}
+            selected_lead_name = st.selectbox("Select a lead", list(lead_options.keys()))
+            
+            if selected_lead_name:
+                lead_id = lead_options[selected_lead_name]
+                lead = repo.get_lead(lead_id)
+                
+                if lead:
+                    display_lead_details(lead)
+        else:
+            st.info("No leads available. Scrape PubMed to get started!")
+        
+        db.close()
+
+
+if __name__ == "__main__":
+    main()
