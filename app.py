@@ -164,7 +164,12 @@ def display_leads_table(leads: list):
     
     # Convert to DataFrame
     data = []
-    for lead in leads:
+    
+    # Sort leads by score (just in case they aren't already) but they typically are from the DB query
+    # Then take only top 500
+    sorted_leads = sorted(leads, key=lambda x: x.total_score, reverse=True)[:500]
+    
+    for lead in sorted_leads:
         # Parse publications
         pub_count = 0
         if lead.publications:
@@ -189,30 +194,42 @@ def display_leads_table(leads: list):
              encoded_query = urllib.parse.quote(query)
              conference_link = f"https://www.google.com/search?q={encoded_query}"
 
+        # Format link for action (research)
+        research_link = f"https://www.google.com/search?q={lead.name} {lead.company} {lead.title} contact"
+        
         data.append({
-            'Score': f"{get_score_emoji(lead.total_score)} {lead.total_score:.1f}",
+            'Rank': len(data) + 1,
+            'Probability': f"{lead.total_score:.1f}",  # Removed emoji for cleaner look
             'Name': lead.name,
             'Title': lead.title,
             'Company': lead.company,
             'Location': lead.person_location or 'Unknown',
+            'HQ': lead.company_hq or 'Unknown',  # Added HQ column
             'Email': lead.email or 'N/A',
             'LinkedIn': lead.linkedin_url or 'N/A',
-            'Conferences': conference_link,
-            'Publications': pub_count,
-            'Category': get_score_category(lead.total_score),
+            'Action': research_link,  # Use search link as action for now
             'ID': lead.id
         })
     
     df = pd.DataFrame(data)
     
-    # Display table with clickable links
+    # Display table with requested columns
     st.dataframe(
         df.drop('ID', axis=1),
         use_container_width=True,
         hide_index=True,
         column_config={
+            "Rank": st.column_config.NumberColumn("Rank", format="%d"),
+            "Probability": st.column_config.ProgressColumn(
+                "Probability",
+                help="Propensity Score (0-100)",
+                format="%.1f",
+                min_value=0,
+                max_value=100,
+            ),
             "LinkedIn": st.column_config.LinkColumn("LinkedIn"),
-            "Conferences": st.column_config.LinkColumn("Conferences")
+            "Action": st.column_config.LinkColumn("Action"),
+            "Email": st.column_config.LinkColumn("Email")
         }
     )
     
@@ -340,9 +357,7 @@ def main():
             step=5.0
         )
         
-        search_name = st.text_input("Search Name")
-        search_company = st.text_input("Search Company")
-        search_location = st.text_input("Search Location")
+        search_term = st.text_input("Search (Name, Title, Company, Location) - Press Enter to search")
         
         st.divider()
         
@@ -373,9 +388,7 @@ def main():
         repo = LeadRepository(db)
         
         leads = repo.search_leads(
-            name=search_name if search_name else None,
-            company=search_company if search_company else None,
-            location=search_location if search_location else None,
+            search_term=search_term if search_term else None,
             min_score=score_range[0],
             max_score=score_range[1]
         )
