@@ -143,6 +143,53 @@ class EmailFinder:
         linkedin_slug = re.sub(r'[^a-z0-9-]', '', linkedin_slug)
         
         return f"https://www.linkedin.com/in/{linkedin_slug}"
+    
+    def suggest_conferences(self, title: str, publications: list = None) -> str:
+        """
+        Suggest relevant conferences based on job title and publications
+        Returns comma-separated list of likely conferences
+        """
+        conferences = []
+        
+        # Convert title to lowercase for matching
+        title_lower = title.lower() if title else ""
+        
+        # Check publications for keywords
+        pub_text = ""
+        if publications:
+            for pub in publications:
+                if isinstance(pub, dict):
+                    pub_text += pub.get('title', '').lower() + " "
+        
+        # Combine title and publication text for keyword matching
+        combined_text = title_lower + " " + pub_text
+        
+        # Toxicology conferences
+        if any(keyword in combined_text for keyword in ['toxicology', 'toxicologist', 'safety', 'dili', 'liver']):
+            conferences.append('SOT (Society of Toxicology)')
+        
+        # Cancer research conferences
+        if any(keyword in combined_text for keyword in ['cancer', 'oncology', 'tumor', 'carcinoma']):
+            conferences.append('AACR (American Association for Cancer Research)')
+        
+        # Drug metabolism conferences
+        if any(keyword in combined_text for keyword in ['metabolism', 'pharmacokinetics', 'xenobiotic']):
+            conferences.append('ISSX (International Society for the Study of Xenobiotics)')
+        
+        # 3D cell culture / organoid conferences
+        if any(keyword in combined_text for keyword in ['3d', 'organoid', 'spheroid', 'organ-on-chip', 'in vitro']):
+            conferences.append('Organ-on-Chip World Summit')
+            conferences.append('3D Cell Culture Conference')
+        
+        # Liver disease conferences
+        if any(keyword in combined_text for keyword in ['hepat', 'liver', 'cirrhosis']):
+            conferences.append('AASLD (American Association for the Study of Liver Diseases)')
+        
+        # Default if no specific match
+        if not conferences:
+            conferences.append('SOT (Society of Toxicology)')
+        
+        return ', '.join(conferences[:3])  # Return top 3 most relevant
 
 
 def main():

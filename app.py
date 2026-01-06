@@ -130,6 +130,11 @@ def scrape_pubmed_leads():
             linkedin_url = email_finder.generate_linkedin_url(lead_data['name'])
             lead_data['linkedin_url'] = linkedin_url
             
+            # Generate conference suggestions
+            publications = lead_data.get('publications', [])
+            conferences = email_finder.suggest_conferences(lead_data.get('title', ''), publications)
+            lead_data['conference_participation'] = conferences
+            
             # Convert publications to JSON string
             if 'publications' in lead_data:
                 lead_data['publications'] = json.dumps(lead_data['publications'])
@@ -169,6 +174,11 @@ def display_leads_table(leads: list):
             except:
                 pass
         
+        # Construct Platform URL (e.g., PubMed search)
+        platform_url = "https://pubmed.ncbi.nlm.nih.gov/"
+        if lead.data_source == 'PubMed':
+             platform_url = f"https://pubmed.ncbi.nlm.nih.gov/?term={lead.name.replace(' ', '+')}"
+        
         data.append({
             'Score': f"{get_score_emoji(lead.total_score)} {lead.total_score:.1f}",
             'Name': lead.name,
@@ -177,7 +187,8 @@ def display_leads_table(leads: list):
             'Location': lead.person_location or 'Unknown',
             'Email': lead.email or 'N/A',
             'LinkedIn': lead.linkedin_url or 'N/A',
-            'Platform': lead.data_source or 'Unknown',
+            'Platform': platform_url,
+            'Conferences': lead.conference_participation or 'N/A',
             'Publications': pub_count,
             'Category': get_score_category(lead.total_score),
             'ID': lead.id
@@ -185,13 +196,14 @@ def display_leads_table(leads: list):
     
     df = pd.DataFrame(data)
     
-    # Display table with LinkedIn as clickable link
+    # Display table with clickable links
     st.dataframe(
         df.drop('ID', axis=1),
         use_container_width=True,
         hide_index=True,
         column_config={
-            "LinkedIn": st.column_config.LinkColumn("LinkedIn")
+            "LinkedIn": st.column_config.LinkColumn("LinkedIn"),
+            "Platform": st.column_config.LinkColumn("Platform", display_text="PubMed")
         }
     )
     
