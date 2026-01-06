@@ -126,8 +126,8 @@ def scrape_pubmed_leads():
             email = email_finder.generate_email(lead_data['name'], lead_data['company'])
             lead_data['email'] = email
             
-            # Generate LinkedIn URL
-            linkedin_url = email_finder.generate_linkedin_url(lead_data['name'])
+            # Generate LinkedIn URL (Search Link)
+            linkedin_url = email_finder.generate_linkedin_url(lead_data['name'], lead_data['company'])
             lead_data['linkedin_url'] = linkedin_url
             
             # Generate conference suggestions
@@ -179,6 +179,16 @@ def display_leads_table(leads: list):
         if lead.data_source == 'PubMed':
              platform_url = f"https://pubmed.ncbi.nlm.nih.gov/?term={lead.name.replace(' ', '+')}"
         
+        # Format conferences with link if available
+        conferences = lead.conference_participation or 'N/A'
+        conference_link = conferences
+        if conferences != 'N/A':
+             # Create a broad search link for the person and these conferences
+             import urllib.parse
+             query = f"{lead.name} {lead.company} {conferences} conference attendance"
+             encoded_query = urllib.parse.quote(query)
+             conference_link = f"https://www.google.com/search?q={encoded_query}"
+
         data.append({
             'Score': f"{get_score_emoji(lead.total_score)} {lead.total_score:.1f}",
             'Name': lead.name,
@@ -188,7 +198,7 @@ def display_leads_table(leads: list):
             'Email': lead.email or 'N/A',
             'LinkedIn': lead.linkedin_url or 'N/A',
             'Platform': platform_url,
-            'Conferences': lead.conference_participation or 'N/A',
+            'Conferences': conference_link,
             'Publications': pub_count,
             'Category': get_score_category(lead.total_score),
             'ID': lead.id
@@ -203,7 +213,8 @@ def display_leads_table(leads: list):
         hide_index=True,
         column_config={
             "LinkedIn": st.column_config.LinkColumn("LinkedIn"),
-            "Platform": st.column_config.LinkColumn("Platform", display_text="PubMed")
+            "Platform": st.column_config.LinkColumn("Platform"),
+            "Conferences": st.column_config.LinkColumn("Conferences")
         }
     )
     
