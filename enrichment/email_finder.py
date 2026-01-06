@@ -120,29 +120,23 @@ class EmailFinder:
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return bool(re.match(pattern, email))
     
-    def generate_linkedin_url(self, name: str) -> str:
+    def generate_linkedin_url(self, name: str, company: str = None) -> str:
         """
-        Generate LinkedIn profile URL from name
-        Format: https://www.linkedin.com/in/firstname-lastname
+        Generate Google Search link to find LinkedIn profile
+        This is reliable when we don't have the exact profile URL
         """
         if not name:
             return ""
         
-        # Parse name
-        parts = self._parse_name(name)
-        if not parts:
-            return ""
+        query = f"site:linkedin.com/in/ {name}"
+        if company:
+            query += f" {company}"
+            
+        # Encode for URL
+        import urllib.parse
+        encoded_query = urllib.parse.quote(query)
         
-        first = parts['first'].lower()
-        last = parts['last'].lower()
-        
-        # Create LinkedIn-style URL slug
-        linkedin_slug = f"{first}-{last}"
-        
-        # Remove any special characters
-        linkedin_slug = re.sub(r'[^a-z0-9-]', '', linkedin_slug)
-        
-        return f"https://www.linkedin.com/in/{linkedin_slug}"
+        return f"https://www.google.com/search?q={encoded_query}"
     
     def suggest_conferences(self, title: str, publications: list = None) -> str:
         """

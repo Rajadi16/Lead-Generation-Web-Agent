@@ -235,7 +235,9 @@ def display_leads_table(leads: list):
     )
     
     # Export button with custom styling
-    csv = df.to_csv(index=False)
+    # Create export DF without internal columns
+    export_df = df.drop('ID', axis=1)
+    csv = export_df.to_csv(index=False).encode('utf-8-sig')
     
     # Custom styled download button
     st.markdown("""
