@@ -105,6 +105,7 @@ class LeadRepository:
     def search_leads(
         self,
         name: Optional[str] = None,
+        title: Optional[str] = None,
         company: Optional[str] = None,
         min_score: Optional[float] = None,
         max_score: Optional[float] = None,
@@ -115,6 +116,8 @@ class LeadRepository:
         
         if name:
             query = query.filter(Lead.name.ilike(f"%{name}%"))
+        if title:
+            query = query.filter(Lead.title.ilike(f"%{title}%"))
         if company:
             query = query.filter(Lead.company.ilike(f"%{company}%"))
         if min_score is not None:

@@ -358,6 +358,7 @@ def main():
         )
         
         search_name = st.text_input("Search Name")
+        search_title = st.text_input("Search Title")
         search_company = st.text_input("Search Company")
         search_location = st.text_input("Search Location")
         
@@ -391,6 +392,7 @@ def main():
         
         leads = repo.search_leads(
             name=search_name if search_name else None,
+            title=search_title if search_title else None,
             company=search_company if search_company else None,
             location=search_location if search_location else None,
             min_score=score_range[0],
