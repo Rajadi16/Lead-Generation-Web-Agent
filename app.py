@@ -342,7 +342,7 @@ def main():
         st.header("Controls")
         
         # Scrape button
-        if st.button("🔍 Scrape PubMed", use_container_width=True):
+        if st.button("🔍 Scrape", use_container_width=True):
             scrape_pubmed_leads()
         
         st.divider()
@@ -361,7 +361,7 @@ def main():
         search_term = st.text_input("Search (Name, Title, Company, Location) - Press Enter to search")
         
         # Live Scrape Option
-        if search_term and st.button(f"🔍 Scrape PubMed for '{search_term}'", use_container_width=True):
+        if search_term and st.button(f"🔍 Scrape '{search_term}'", use_container_width=True):
              scrape_pubmed_leads(search_term)
         
         st.divider()
