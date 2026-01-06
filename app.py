@@ -126,6 +126,10 @@ def scrape_pubmed_leads():
             email = email_finder.generate_email(lead_data['name'], lead_data['company'])
             lead_data['email'] = email
             
+            # Generate LinkedIn URL
+            linkedin_url = email_finder.generate_linkedin_url(lead_data['name'])
+            lead_data['linkedin_url'] = linkedin_url
+            
             # Convert publications to JSON string
             if 'publications' in lead_data:
                 lead_data['publications'] = json.dumps(lead_data['publications'])
@@ -172,6 +176,7 @@ def display_leads_table(leads: list):
             'Company': lead.company,
             'Location': lead.person_location or 'Unknown',
             'Email': lead.email or 'N/A',
+            'LinkedIn': lead.linkedin_url or 'N/A',
             'Publications': pub_count,
             'Category': get_score_category(lead.total_score),
             'ID': lead.id
@@ -179,38 +184,48 @@ def display_leads_table(leads: list):
     
     df = pd.DataFrame(data)
     
-    # Display table
+    # Display table with LinkedIn as clickable link
     st.dataframe(
         df.drop('ID', axis=1),
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
+        column_config={
+            "LinkedIn": st.column_config.LinkColumn("LinkedIn", display_text="View Profile")
+        }
     )
     
-    # Export buttons
-    col1, col2 = st.columns(2)
+    # Export button with custom styling
+    csv = df.to_csv(index=False)
     
-    with col1:
-        csv = df.to_csv(index=False)
-        st.download_button(
-            label="📥 Download CSV",
-            data=csv,
-            file_name=f"leads_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime="text/csv"
-        )
+    # Custom styled download button
+    st.markdown("""
+    <style>
+    .stDownloadButton > button {
+        width: 100%;
+        background-color: transparent;
+        color: white;
+        border: 2px solid #404040;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .stDownloadButton > button:hover {
+        background-color: #2d2d2d;
+        border-color: #505050;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
-    with col2:
-        # For Excel export, we need to use a buffer
-        from io import BytesIO
-        buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Leads')
-        
-        st.download_button(
-            label="📥 Download Excel",
-            data=buffer.getvalue(),
-            file_name=f"leads_{datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+    st.download_button(
+        label="📥 Download Qualified Leads (CSV)",
+        data=csv,
+        file_name=f"qualified_leads_{datetime.now().strftime('%Y%m%d')}.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
 
 
 def display_lead_details(lead: Lead):

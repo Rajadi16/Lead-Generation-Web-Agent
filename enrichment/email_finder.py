@@ -119,6 +119,30 @@ class EmailFinder:
         """Validate email format"""
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return bool(re.match(pattern, email))
+    
+    def generate_linkedin_url(self, name: str) -> str:
+        """
+        Generate LinkedIn profile URL from name
+        Format: https://www.linkedin.com/in/firstname-lastname
+        """
+        if not name:
+            return ""
+        
+        # Parse name
+        parts = self._parse_name(name)
+        if not parts:
+            return ""
+        
+        first = parts['first'].lower()
+        last = parts['last'].lower()
+        
+        # Create LinkedIn-style URL slug
+        linkedin_slug = f"{first}-{last}"
+        
+        # Remove any special characters
+        linkedin_slug = re.sub(r'[^a-z0-9-]', '', linkedin_slug)
+        
+        return f"https://www.linkedin.com/in/{linkedin_slug}"
 
 
 def main():
