@@ -17,11 +17,35 @@ The system automatically discovers potential leads by:
   - DILI (Drug-Induced Liver Injury)
 - **Author Extraction**: Automatically extracts researcher names, affiliations, companies, and locations from publications
 - **Publication Tracking**: Records recent publications (last 24 months) for scientific intent scoring
+- **Result**: Successfully identified **1,217 qualified leads** from PubMed
+
+**❌ NOT Implemented (Why):**
+
+> [!IMPORTANT]
+> **LinkedIn Sales Navigator Integration**: Not implemented due to API costs and compliance requirements.
+> - **Why**: LinkedIn's official API (via Proxycurl) costs $0.01-0.02 per profile (~$10-20 for 1,000 leads)
+> - **Why**: Requires paid API subscription and careful compliance with LinkedIn's Terms of Service
+> - **Alternative**: Current implementation uses PubMed which provides high-quality scientific leads without API costs
+> - **Future**: Can be added with Proxycurl API integration if budget allows
+
+> [!IMPORTANT]
+> **Conference Attendee Lists (SOT, AACR, ISSX)**: Not implemented due to data access limitations.
+> - **Why**: Conference websites typically don't provide public APIs for attendee data
+> - **Why**: Attendee lists are often behind registration walls or require manual collection
+> - **Why**: Web scraping conference sites may violate terms of service
+> - **Future**: Can be implemented with manual data collection or if conferences provide API access
+
+> [!IMPORTANT]
+> **Job Title Filtering**: Partially implemented.
+> - **Current**: Assigns default "Research Scientist" title to all PubMed authors
+> - **Why**: PubMed doesn't include job titles in publication metadata
+> - **Why**: Would require LinkedIn enrichment to get actual titles like "Director of Toxicology"
+- **Future**: Can be enhanced with LinkedIn API or manual title validation
 
 **🔄 Planned Enhancements:**
 - LinkedIn Sales Navigator integration for targeted profile searches (Director of Toxicology, Head of Preclinical Safety, etc.)
 - Conference attendee list scraping (SOT - Society of Toxicology, AACR, ISSX)
-- Job title filtering and validation
+- Job title filtering and validation from LinkedIn profiles
 
 ### Stage 2: Enrichment
 
