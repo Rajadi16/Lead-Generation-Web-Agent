@@ -5,9 +5,10 @@ dependencies:
   - python=3.11
   - pip
   - pip:
-    - streamlit==1.29.0
+    - streamlit==1.32.0
     - fastapi==0.109.0
     - uvicorn==0.27.0
+    - watchdog  # For better file watching
     - pandas==2.1.4
     - numpy==1.26.3
     - requests==2.31.0
