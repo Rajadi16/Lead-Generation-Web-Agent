@@ -92,15 +92,16 @@ def get_score_class(score: float) -> str:
         return "cold-lead"
 
 
-def scrape_pubmed_leads():
+def scrape_pubmed_leads(query: str = None):
     """Scrape leads from PubMed"""
-    with st.spinner("Searching PubMed for relevant papers..."):
+    search_terms = [query] if query else PUBMED_KEYWORDS
+    with st.spinner(f"Searching PubMed for papers related to: {', '.join(search_terms)}..."):
         scraper = PubMedScraper()
         scorer = PropensityScorer()
         email_finder = EmailFinder()
         
         # Search for papers
-        paper_ids = scraper.search_papers(PUBMED_KEYWORDS, months_back=24, max_results=100)
+        paper_ids = scraper.search_papers(search_terms, months_back=24, max_results=100)
         
         if not paper_ids:
             st.error("No papers found matching the criteria")
@@ -358,6 +359,10 @@ def main():
         )
         
         search_term = st.text_input("Search (Name, Title, Company, Location) - Press Enter to search")
+        
+        # Live Scrape Option
+        if search_term and st.button(f"🔍 Scrape PubMed for '{search_term}'", use_container_width=True):
+             scrape_pubmed_leads(search_term)
         
         st.divider()
         
