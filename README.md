@@ -3,6 +3,7 @@
 **Automated system for identifying and ranking high-value leads in the Biotech & Pharma sector.**
 
 ![Dashboard Preview](dashboard_initial_load_1767726523663.png)
+> **🚀 Live Demo**: [Click here to view the app](https://lead-generation-web-agent-pethbumskzqjnaxpwvr2bd.streamlit.app/)
 
 ## 🚀 Key Features
 
