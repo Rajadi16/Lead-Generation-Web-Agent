@@ -357,7 +357,9 @@ def main():
             step=5.0
         )
         
-        search_term = st.text_input("Search (Name, Title, Company, Location) - Press Enter to search")
+        search_name = st.text_input("Search Name")
+        search_company = st.text_input("Search Company")
+        search_location = st.text_input("Search Location")
         
         st.divider()
         
@@ -388,7 +390,9 @@ def main():
         repo = LeadRepository(db)
         
         leads = repo.search_leads(
-            search_term=search_term if search_term else None,
+            name=search_name if search_name else None,
+            company=search_company if search_company else None,
+            location=search_location if search_location else None,
             min_score=score_range[0],
             max_score=score_range[1]
         )

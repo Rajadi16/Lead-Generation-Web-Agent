@@ -109,20 +109,9 @@ class LeadRepository:
         min_score: Optional[float] = None,
         max_score: Optional[float] = None,
         location: Optional[str] = None,
-        search_term: Optional[str] = None,
     ) -> List[Lead]:
         """Search leads with filters"""
         query = self.db.query(Lead)
-        
-        if search_term:
-            term = f"%{search_term}%"
-            query = query.filter(
-                (Lead.name.ilike(term)) |
-                (Lead.title.ilike(term)) |
-                (Lead.company.ilike(term)) |
-                (Lead.person_location.ilike(term)) |
-                (Lead.company_hq.ilike(term))
-            )
         
         if name:
             query = query.filter(Lead.name.ilike(f"%{name}%"))
