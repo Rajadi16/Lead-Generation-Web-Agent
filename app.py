@@ -197,7 +197,6 @@ def display_leads_table(leads: list):
             'Location': lead.person_location or 'Unknown',
             'Email': lead.email or 'N/A',
             'LinkedIn': lead.linkedin_url or 'N/A',
-            'Platform': platform_url,
             'Conferences': conference_link,
             'Publications': pub_count,
             'Category': get_score_category(lead.total_score),
@@ -213,7 +212,6 @@ def display_leads_table(leads: list):
         hide_index=True,
         column_config={
             "LinkedIn": st.column_config.LinkColumn("LinkedIn"),
-            "Platform": st.column_config.LinkColumn("Platform"),
             "Conferences": st.column_config.LinkColumn("Conferences")
         }
     )
